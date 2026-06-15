@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Timer Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--border:#2a2a40;
+  --accent:#00e5ff;--accent2:#ff3cac;--accent3:#7b2fff;
+  --green:#00ff88;--red:#ff4757;--yellow:#ffd32a;--orange:#ff9f43;
+  --text:#e8e8f0;--muted:#6b6b8a;
+}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at 20% 20%,rgba(123,47,255,.08) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(0,229,255,.06) 0%,transparent 50%),radial-gradient(ellipse at 50% 50%,rgba(255,60,172,.04) 0%,transparent 60%);pointer-events:none;z-index:0}
+
+/* LOGIN */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200;padding:24px}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:44px 40px;width:100%;max-width:420px;text-align:center;position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--accent2),transparent)}
+.login-logo{font-size:48px;margin-bottom:12px}
+.login-title{font-size:24px;font-weight:800;background:linear-gradient(135deg,#fff,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+.login-sub{font-size:14px;color:var(--muted);margin-bottom:32px}
+.login-input-wrap{text-align:left;margin-bottom:20px}
+.login-input-wrap label{display:block;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.login-input-wrap input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;color:var(--text);font-family:'Syne',sans-serif;font-size:15px;outline:none;transition:all .2s}
+.login-input-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,.12)}
+.login-input-wrap input::placeholder{color:var(--muted)}
+.login-btn{width:100%;padding:15px;border-radius:12px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:linear-gradient(135deg,var(--accent),var(--accent3));color:#000;box-shadow:0 4px 24px rgba(0,229,255,.3);transition:all .2s}
+.login-btn:hover{transform:translateY(-2px)}
+
+/* MAIN APP */
+.main-app{display:none;min-height:100vh;justify-content:center;padding:24px}
+.main-app.visible{display:flex}
+.container{width:100%;max-width:960px;position:relative;z-index:1}
+
+/* Header */
+.header{text-align:center;margin-bottom:20px}
+.header-badge{display:inline-block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:3px;color:var(--accent);border:1px solid rgba(0,229,255,.3);padding:4px 14px;border-radius:100px;margin-bottom:14px;text-transform:uppercase;background:rgba(0,229,255,.05)}
+.header h1{font-size:clamp(26px,5vw,46px);font-weight:800;line-height:1.1;background:linear-gradient(135deg,#fff 0%,var(--accent) 50%,var(--accent2) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-1px}
+.header p{color:var(--muted);font-size:14px;margin-top:6px}
+.user-bar{display:inline-flex;align-items:center;gap:12px;margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:100px;padding:8px 18px;font-size:13px;flex-wrap:wrap;justify-content:center}
+.user-bar .uname{font-weight:700;color:var(--accent)}
+.btn-logout{background:rgba(255,71,87,.12);border:1px solid rgba(255,71,87,.3);color:var(--red);border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s}
+.btn-logout:hover{background:rgba(255,71,87,.25)}
+
+/* Sync bar */
+.sync-bar{display:flex;align-items:center;justify-content:center;gap:10px;padding:9px 20px;border-radius:100px;font-size:12px;font-weight:700;margin-bottom:16px;border:1px solid transparent;transition:all .4s;flex-wrap:wrap}
+.sync-bar.synced {background:rgba(0,255,136,.07);border-color:rgba(0,255,136,.25);color:var(--green)}
+.sync-bar.syncing{background:rgba(0,229,255,.07);border-color:rgba(0,229,255,.25);color:var(--accent)}
+.sync-bar.pending{background:rgba(255,211,42,.07);border-color:rgba(255,211,42,.25);color:var(--yellow)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+.sync-dot.blink{animation:blink 1s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.5)}}
+.sync-retry-btn{background:transparent;border:1px solid currentColor;color:inherit;border-radius:6px;padding:2px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif}
+
+/* Card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;margin-bottom:20px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),var(--accent2),transparent);opacity:.5}
+
+/* Timer */
+.timer-display{text-align:center;padding:28px 0}
+.timer-ring{position:relative;width:180px;height:180px;margin:0 auto 20px}
+.timer-ring svg{transform:rotate(-90deg);position:absolute;top:0;left:0}
+.timer-ring-track{fill:none;stroke:var(--border);stroke-width:4}
+.timer-ring-progress{fill:none;stroke:url(#ringGrad);stroke-width:4;stroke-linecap:round;stroke-dasharray:502.65;stroke-dashoffset:502.65;transition:stroke-dashoffset .5s linear}
+.timer-inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.timer-value{font-family:'Space Mono',monospace;font-size:28px;font-weight:700;line-height:1;letter-spacing:-1px}
+.timer-unit{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;margin-top:4px}
+.status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:100px;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
+.status-badge .dot{width:7px;height:7px;border-radius:50%}
+.status-stopped{background:rgba(107,107,138,.15);color:var(--muted);border:1px solid rgba(107,107,138,.3)}
+.status-running{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3)}
+.status-running .dot{background:var(--green);animation:pulse 1s infinite}
+.status-paused{background:rgba(255,211,42,.1);color:var(--yellow);border:1px solid rgba(255,211,42,.3)}
+.status-paused .dot{background:var(--yellow)}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+
+/* Form */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}}
+.full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:7px}
+.form-group label{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.form-group input,.form-group select,.form-group textarea{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;outline:none;transition:all .2s;appearance:none;-webkit-appearance:none;width:100%}
+.form-group textarea{resize:vertical;min-height:72px;line-height:1.5}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,.1)}
+.form-group input::placeholder,.form-group textarea::placeholder{color:var(--muted)}
+.form-group input[readonly]{opacity:.75;cursor:not-allowed;background:rgba(0,229,255,.04);border-color:rgba(0,229,255,.25)}
+.select-wrap{position:relative}
+.select-wrap::after{content:'▾';position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;font-size:12px}
+input[type="number"]{-moz-appearance:textfield}
+input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* Attachment */
+.attach-zone{border:1.5px dashed var(--border);border-radius:12px;padding:14px;transition:all .2s;cursor:pointer}
+.attach-zone:hover{border-color:var(--accent);background:rgba(0,229,255,.03)}
+.attach-drop{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--muted);font-size:13px;font-weight:600;padding:6px 0}
+.attach-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.thumb-wrap{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+.thumb-wrap img{width:100%;height:100%;object-fit:cover;cursor:pointer}
+.thumb-remove{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(255,71,87,.9);color:#fff;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.attach-count{display:inline-flex;align-items:center;gap:4px;background:rgba(0,229,255,.08);color:var(--accent);border:1px solid rgba(0,229,255,.2);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;font-family:'Space Mono',monospace}
+
+/* Buttons */
+.btn-row{display:flex;gap:12px;flex-wrap:wrap}
+.btn{flex:1;min-width:100px;padding:13px 18px;border-radius:12px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:white;opacity:0;transition:opacity .15s}
+.btn:hover::after{opacity:.07}
+.btn:active{transform:scale(.97)}
+.btn-start  {background:linear-gradient(135deg,#00ff88,#00c4a0);color:#000;box-shadow:0 4px 20px rgba(0,255,136,.25)}
+.btn-pause  {background:linear-gradient(135deg,#ffd32a,#ff9f43);color:#000;box-shadow:0 4px 20px rgba(255,211,42,.25)}
+.btn-stop   {background:linear-gradient(135deg,#ff4757,#c0392b);color:#fff;box-shadow:0 4px 20px rgba(255,71,87,.25)}
+.btn-manual {background:linear-gradient(135deg,#7b2fff,#ff3cac);color:#fff;box-shadow:0 4px 20px rgba(123,47,255,.3);flex:0 0 auto}
+.btn-reminder{background:var(--surface2);color:var(--text);border:1px solid var(--border);flex:0 0 auto;position:relative}
+.btn-reminder.active{background:rgba(123,47,255,.2);border-color:var(--accent3);color:var(--accent3)}
+.reminder-badge{position:absolute;top:-6px;right:-6px;background:var(--accent3);color:#fff;font-size:9px;font-weight:700;border-radius:100px;padding:2px 6px;font-family:'Space Mono',monospace}
+.btn-download{background:linear-gradient(135deg,var(--accent3),var(--accent2));color:#fff;box-shadow:0 4px 20px rgba(123,47,255,.3);width:100%;margin-top:12px}
+.divider{height:1px;background:var(--border);margin:22px 0}
+
+/* Sync stats */
+.sync-stats-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)}
+.ss-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;font-family:'Space Mono',monospace}
+.ss-ok  {background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.25)}
+.ss-warn{background:rgba(255,211,42,.1);color:var(--yellow);border:1px solid rgba(255,211,42,.25)}
+.ss-un  {background:rgba(107,107,138,.1);color:var(--muted);border:1px solid rgba(107,107,138,.25)}
+.btn-sync-check{background:linear-gradient(135deg,rgba(0,229,255,.12),rgba(123,47,255,.12));border:1px solid rgba(0,229,255,.3);color:var(--accent);border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s;white-space:nowrap}
+.btn-sync-check:hover{background:rgba(0,229,255,.2)}
+
+/* Records */
+.records-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:12px;flex-wrap:wrap}
+.records-title{font-size:16px;font-weight:700;display:flex;align-items:center;gap:10px}
+.records-count{background:rgba(0,229,255,.1);color:var(--accent);border:1px solid rgba(0,229,255,.2);border-radius:100px;padding:2px 10px;font-size:12px;font-family:'Space Mono',monospace}
+.btn-clear{background:transparent;border:1px solid rgba(255,71,87,.3);color:var(--red);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-family:'Syne',sans-serif;font-weight:600;transition:all .2s}
+.btn-clear:hover{background:rgba(255,71,87,.1)}
+.table-wrap{overflow-x:auto;margin-top:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr.main-row{border-bottom:1px solid rgba(42,42,64,.4);transition:background .15s;cursor:pointer}
+tbody tr.main-row:hover{background:rgba(255,255,255,.02)}
+tbody tr.detail-row{border-bottom:1px solid rgba(42,42,64,.6)}
+tbody td{padding:11px 12px;color:var(--text);white-space:nowrap;vertical-align:middle}
+
+/* Tags */
+.tag{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700}
+.tag-cr    {background:rgba(0,229,255,.1);color:var(--accent)}
+.tag-build {background:rgba(123,47,255,.15);color:#a78bfa}
+.tag-bug   {background:rgba(255,71,87,.1);color:var(--red)}
+.tag-asset {background:rgba(255,211,42,.1);color:var(--yellow)}
+.tag-audit {background:rgba(16,185,129,.12);color:#34d399}
+.tag-misc  {background:rgba(107,107,138,.15);color:var(--muted)}
+.tag-manual{background:rgba(255,60,172,.12);color:var(--accent2);font-size:9px;margin-left:4px}
+.tag-low   {background:rgba(0,255,136,.1);color:var(--green)}
+.tag-high  {background:rgba(255,159,67,.15);color:var(--orange)}
+.tag-complex{background:rgba(255,71,87,.12);color:var(--red)}
+.si{font-size:12px;font-weight:700;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.si-ok {background:rgba(0,255,136,.12);color:var(--green)}
+.si-no {background:rgba(255,211,42,.12);color:var(--yellow)}
+
+/* Detail */
+.detail-panel{background:rgba(0,0,0,.25);padding:14px 16px;border-top:1px solid rgba(42,42,64,.6)}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:600px){.detail-grid{grid-template-columns:1fr}}
+.detail-field label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px}
+.detail-field p{font-size:13px;color:var(--text);white-space:pre-wrap;word-break:break-word;line-height:1.5}
+.detail-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.detail-thumb{width:72px;height:72px;border-radius:8px;object-fit:cover;border:1px solid var(--border);cursor:pointer;transition:transform .2s}
+.detail-thumb:hover{transform:scale(1.05)}
+.expand-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;transition:transform .2s;padding:2px 6px}
+.expand-btn.open{transform:rotate(180deg)}
+.detail-actions{display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px}
+.sync-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700}
+.sc-ok{background:rgba(0,255,136,.1);color:var(--green)}
+.sc-no{background:rgba(255,211,42,.1);color:var(--yellow)}
+.btn-edit-row{background:rgba(123,47,255,.15);border:1px solid rgba(123,47,255,.35);color:#a78bfa;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s}
+.btn-edit-row:hover{background:rgba(123,47,255,.3)}
+.btn-resync-row{background:rgba(255,211,42,.1);border:1px solid rgba(255,211,42,.3);color:var(--yellow);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s}
+.dur{font-family:'Space Mono',monospace;font-size:12px;color:var(--accent)}
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted)}
+.empty-state .icon{font-size:40px;margin-bottom:12px;opacity:.5}
+
+/* MODALS — shared */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(8px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;position:relative;transform:translateY(20px) scale(.97);transition:all .25s cubic-bezier(.34,1.56,.64,1);max-height:92vh;overflow-y:auto}
+.modal-overlay.open .modal{transform:translateY(0) scale(1)}
+.modal::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent3),var(--accent2),transparent);border-radius:20px 20px 0 0}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.modal-title{font-size:17px;font-weight:800;background:linear-gradient(135deg,var(--accent3),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.modal-close{background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.modal-close:hover{color:var(--text);border-color:var(--accent2)}
+.modal-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.modal-form-grid .full{grid-column:1/-1}
+.dur-preview{background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.2);border-radius:10px;padding:11px 14px;font-family:'Space Mono',monospace;font-size:13px;color:var(--accent);text-align:center;letter-spacing:1px;min-height:42px;display:flex;align-items:center;justify-content:center;grid-column:1/-1}
+.btn-modal-save{width:100%;padding:14px;border-radius:12px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:linear-gradient(135deg,var(--accent3),var(--accent2));color:#fff;box-shadow:0 4px 20px rgba(123,47,255,.3);transition:all .2s;margin-top:16px}
+.btn-modal-save:hover{transform:translateY(-1px)}
+
+/* ── STOP CONFIRMATION MODAL ── */
+.stop-session-card{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:22px}
+.stop-duration{font-family:'Space Mono',monospace;font-size:36px;font-weight:700;color:var(--accent);text-align:center;letter-spacing:-1px;margin-bottom:14px;text-shadow:0 0 20px rgba(0,229,255,.3)}
+.stop-info-row{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px}
+.stop-info-row:last-child{margin-bottom:0}
+.stop-info-row .lbl{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;min-width:70px}
+.stop-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn-stop-edit{padding:14px;border-radius:12px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:var(--surface2);border:1px solid var(--border);color:var(--text);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-stop-edit:hover{border-color:var(--accent3);color:var(--accent3);background:rgba(123,47,255,.1)}
+.btn-stop-save{padding:14px;border-radius:12px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:linear-gradient(135deg,var(--green),#00c4a0);color:#000;box-shadow:0 4px 20px rgba(0,255,136,.3);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-stop-save:hover{transform:translateY(-1px)}
+.btn-stop-discard{width:100%;margin-top:10px;padding:10px;border-radius:10px;border:1px solid rgba(255,71,87,.25);background:transparent;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s}
+.btn-stop-discard:hover{border-color:var(--red);color:var(--red)}
+
+/* ── REMINDER MODAL ── */
+.reminder-status-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:100px;font-size:13px;font-weight:700;margin-bottom:24px}
+.rsb-on {background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.3)}
+.rsb-off{background:rgba(107,107,138,.1);color:var(--muted);border:1px solid rgba(107,107,138,.3)}
+.reminder-time-row{display:flex;align-items:center;gap:12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px}
+.reminder-time-row label{font-size:13px;font-weight:700;color:var(--text);flex:1}
+.reminder-minutes-wrap{display:flex;align-items:center;gap:8px}
+.rem-adj{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.rem-adj:hover{border-color:var(--accent);color:var(--accent)}
+.rem-num{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:var(--accent);min-width:40px;text-align:center}
+.rem-unit{font-size:13px;color:var(--muted);font-weight:600}
+.reminder-btns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn-rem-test{padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-rem-test:hover{border-color:var(--accent);color:var(--accent)}
+.btn-rem-enable{padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--green),#00c4a0);color:#000;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 16px rgba(0,255,136,.25)}
+.btn-rem-enable:hover{transform:translateY(-1px)}
+.btn-rem-disable{grid-column:1/-1;padding:11px;border-radius:10px;border:1px solid rgba(255,71,87,.3);background:transparent;color:var(--red);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-rem-disable:hover{background:rgba(255,71,87,.1)}
+.reminder-note{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.6}
+
+/* Sync modal */
+.sync-summary-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px}
+@media(max-width:500px){.sync-summary-grid{grid-template-columns:1fr 1fr}}
+.sync-stat-box{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+.sync-stat-box .snum{font-family:'Space Mono',monospace;font-size:28px;font-weight:700;line-height:1;margin-bottom:4px}
+.sync-stat-box .slbl{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.ssb-total .snum{color:var(--accent)}
+.ssb-synced .snum{color:var(--green)}
+.ssb-unsync .snum{color:var(--yellow)}
+.btn-resync-all{width:100%;padding:14px;border-radius:12px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;background:linear-gradient(135deg,var(--yellow),var(--orange));color:#000;box-shadow:0 4px 20px rgba(255,211,42,.25);transition:all .2s;margin-bottom:20px}
+.btn-resync-all:hover{transform:translateY(-1px)}
+.btn-resync-all:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.sync-list-header{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.sync-list{display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto}
+.sync-list-item{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+.sync-list-item.unsynced{border-color:rgba(255,211,42,.3)}
+.sync-list-item.synced{border-color:rgba(0,255,136,.25)}
+.sli-info{flex:1;min-width:0}
+.sli-name{font-size:13px;font-weight:700}
+.sli-meta{font-size:11px;color:var(--muted);margin-top:2px;font-family:'Space Mono',monospace}
+.btn-sli-sync{background:rgba(255,211,42,.12);border:1px solid rgba(255,211,42,.3);color:var(--yellow);border-radius:7px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;white-space:nowrap;transition:all .2s}
+.btn-sli-sync:disabled{opacity:.4;cursor:not-allowed}
+.note-box{margin-top:14px;padding:10px 14px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.15);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.6}
+.note-box strong{color:var(--accent)}
+
+/* Lightbox */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:3000;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.lightbox img{max-width:90vw;max-height:90vh;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:13px 18px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;transform:translateY(80px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{border-color:rgba(0,255,136,.3)}
+.toast.error  {border-color:rgba(255,71,87,.3)}
+.toast.warn   {border-color:rgba(255,211,42,.3)}
+input[type="date"],input[type="time"]{color-scheme:dark}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">⏱</div>
+    <div class="login-title">Task Timer Dashboard</div>
+    <p class="login-sub">Enter your name to start tracking your sessions</p>
+    <div class="login-input-wrap">
+      <label>👤 Your Full Name</label>
+      <input id="loginUser" type="text" placeholder="e.g. Rahul Kumar" autocomplete="off"
+             onkeydown="if(event.key==='Enter')loginUser()"/>
+    </div>
+    <button class="login-btn" onclick="loginUser()">▶ Enter Dashboard</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="main-app" id="mainApp">
+<div class="container">
+
+  <div class="header">
+    <div class="header-badge">⚡ Productivity Suite</div>
+    <h1>Task Timer Dashboard</h1>
+    <p>Track your work sessions with precision</p>
+    <div class="user-bar">
+      <span>👤 Logged in as:</span>
+      <span class="uname" id="loggedUserName">—</span>
+      <button class="btn-logout" onclick="logoutUser()">✕ Logout</button>
+    </div>
+  </div>
+
+  <div class="sync-bar synced" id="syncBar">
+    <span class="sync-dot" id="syncDot"></span>
+    <span id="syncMsg">All records synced ✓</span>
+  </div>
+
+  <!-- Timer Card -->
+  <div class="card">
+    <div class="timer-display">
+      <div class="timer-ring">
+        <svg width="180" height="180" viewBox="0 0 180 180">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#00e5ff"/>
+              <stop offset="100%" style="stop-color:#ff3cac"/>
+            </linearGradient>
+          </defs>
+          <circle class="timer-ring-track" cx="90" cy="90" r="80"/>
+          <circle class="timer-ring-progress" id="ringProgress" cx="90" cy="90" r="80"/>
+        </svg>
+        <div class="timer-inner">
+          <div class="timer-value" id="timerDisplay">00:00:00</div>
+          <div class="timer-unit">HH:MM:SS</div>
+        </div>
+      </div>
+      <div id="statusBadge" class="status-badge status-stopped"><span class="dot"></span> Stopped</div>
+    </div>
+    <div class="divider"></div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>👤 User Name</label>
+        <input id="username" type="text" placeholder="Your name" readonly/>
+      </div>
+      <div class="form-group">
+        <label>🗂️ Project ID</label>
+        <input id="project" type="number" placeholder="e.g. 1042"/>
+      </div>
+      <div class="form-group full">
+        <label>📋 Request Type</label>
+        <div class="select-wrap">
+          <select id="request">
+            <option value="">Select request type...</option>
+            <option value="CR">CR — Change Request</option>
+            <option value="Build">Build</option>
+            <option value="BugFixing">Bug Fixing</option>
+            <option value="Asset Extraction">Asset Extraction</option>
+            <option value="Asset Audit">Asset Audit</option>
+            <option value="Pre Audit">Pre Audit</option>
+            <option value="Change Round Asset Audit">Change Round Asset Audit</option>
+            <option value="Misc.">Misc.</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>🎯 Complexity</label>
+        <div class="select-wrap">
+          <select id="complexity">
+            <option value="">Select...</option>
+            <option value="Low">Low</option>
+            <option value="High">High</option>
+            <option value="Complex">Complex</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>⚡ Task Efforts</label>
+        <input id="efforts" type="text" placeholder="e.g. 2h design + 1h review"/>
+      </div>
+      <div class="form-group full">
+        <label>🐛 Issues / Notes</label>
+        <textarea id="issues" placeholder="Describe any issues, blockers, or notes..."></textarea>
+      </div>
+      <div class="form-group full">
+        <label>📎 Attachments <span style="color:var(--muted);font-size:10px;letter-spacing:0;text-transform:none;font-weight:600">(local + Excel only)</span></label>
+        <div class="attach-zone" onclick="document.getElementById('mainAttachInput').click()">
+          <input type="file" id="mainAttachInput" multiple accept="image/*" style="display:none" onchange="handleAttachFiles(event,'main')"/>
+          <div class="attach-drop">📎 Click to attach images (max 3)</div>
+        </div>
+        <div class="attach-preview" id="mainAttachPreview"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button id="startBtn" class="btn btn-start" onclick="toggleTimer()">
+        <span id="startIcon">▶</span><span id="startLabel">Start</span>
+      </button>
+      <button class="btn btn-stop" onclick="stopTimer()">■ Stop</button>
+      <button class="btn btn-manual" onclick="openEntryModal(null)">✏️ Manual</button>
+      <button id="reminderBtn" class="btn btn-reminder" onclick="openReminderModal()" title="Set reminder">
+        🔔 Reminder
+        <span class="reminder-badge" id="reminderBadge" style="display:none">10m</span>
+      </button>
+    </div>
+    <button class="btn btn-download" onclick="downloadExcel()">↓ Download Excel Report</button>
+  </div>
+
+  <!-- Records Card -->
+  <div class="card">
+    <div class="records-header">
+      <div class="records-title">
+        Session Records <span class="records-count" id="recordCount">0</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn-sync-check" onclick="openSyncModal()">🔄 Sync Status</button>
+        <button class="btn-clear" onclick="clearData()">Clear All</button>
+      </div>
+    </div>
+    <div class="sync-stats-row" id="syncStatsRow" style="display:none">
+      <span id="ssBadgeTotal"  class="ss-badge ss-un"></span>
+      <span id="ssBadgeSynced" class="ss-badge ss-ok"></span>
+      <span id="ssBadgeUnsync" class="ss-badge ss-warn" style="display:none"></span>
+      <button class="btn-sync-check" id="ssResyncBtn" style="display:none" onclick="resyncAll()">⟳ Re-sync All</button>
+    </div>
+    <div class="table-wrap"><div id="tableContainer"></div></div>
+  </div>
+
+</div>
+</div><!-- /main-app -->
+
+<!-- ══ STOP CONFIRMATION MODAL ══ -->
+<div class="modal-overlay" id="stopConfirmModal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title">🏁 Session Complete</div>
+      <button class="modal-close" onclick="discardStop()">✕</button>
+    </div>
+    <div class="stop-session-card">
+      <div class="stop-duration" id="sc_duration">00:00:00</div>
+      <div class="stop-info-row"><span class="lbl">User</span><span id="sc_user">—</span></div>
+      <div class="stop-info-row"><span class="lbl">Project</span><span id="sc_project">—</span></div>
+      <div class="stop-info-row"><span class="lbl">Request</span><span id="sc_request">—</span></div>
+      <div class="stop-info-row"><span class="lbl">Start</span><span id="sc_start" style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted)">—</span></div>
+      <div class="stop-info-row"><span class="lbl">End</span><span id="sc_end"   style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted)">—</span></div>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;text-align:center">Save as-is, or add more details (complexity, issues, attachments)?</p>
+    <div class="stop-actions">
+      <button class="btn-stop-edit" onclick="editBeforeStop()">✏️ Edit &amp; Save</button>
+      <button class="btn-stop-save" onclick="confirmSaveNow()">✓ Save Now</button>
+    </div>
+    <button class="btn-stop-discard" onclick="discardStop()">✕ Cancel — Resume Timer</button>
+  </div>
+</div>
+
+<!-- ══ REMINDER SETTINGS MODAL ══ -->
+<div class="modal-overlay" id="reminderModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">🔔 Reminder Settings</div>
+      <button class="modal-close" onclick="closeReminderModal()">✕</button>
+    </div>
+    <div style="text-align:center;margin-bottom:20px">
+      <div class="reminder-status-badge" id="reminderStatusBadge">
+        <span id="reminderStatusDot">○</span>
+        <span id="reminderStatusText">OFF</span>
+      </div>
+    </div>
+    <div class="reminder-time-row">
+      <label>⏰ Remind me every</label>
+      <div class="reminder-minutes-wrap">
+        <button class="rem-adj" onclick="adjustReminder(-1)">−</button>
+        <span class="rem-num" id="remMinsDisplay">10</span>
+        <button class="rem-adj" onclick="adjustReminder(+1)">+</button>
+        <span class="rem-unit">min</span>
+      </div>
+    </div>
+    <div class="reminder-btns">
+      <button class="btn-rem-test" onclick="testReminderNow()">🔊 Test Sound</button>
+      <button class="btn-rem-enable" onclick="enableReminder()">✓ Enable Reminder</button>
+      <button class="btn-rem-disable" onclick="disableReminder()">🔕 Disable Reminder</button>
+    </div>
+    <p class="reminder-note">
+      Reminder fires every <strong id="remNoteMinutes">10</strong> minutes while timer is running.<br>
+      Sound plays even if browser notifications are blocked.<br>
+      Click "Test Sound" to verify your audio works.
+    </p>
+  </div>
+</div>
+
+<!-- ══ ENTRY MODAL (Manual + Edit + EditFromTimer) ══ -->
+<div class="modal-overlay" id="entryModal">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">✏️ Manual Entry</div>
+      <button class="modal-close" onclick="closeEntryModal()">✕</button>
+    </div>
+    <div class="modal-form-grid">
+      <div class="form-group"><label>👤 User Name</label><input id="e_user" type="text" placeholder="Your name" autocomplete="off"/></div>
+      <div class="form-group"><label>🗂️ Project ID</label><input id="e_project" type="number" placeholder="e.g. 1042"/></div>
+      <div class="form-group full">
+        <label>📋 Request Type</label>
+        <div class="select-wrap">
+          <select id="e_request">
+            <option value="">Select...</option>
+            <option value="CR">CR — Change Request</option>
+            <option value="Build">Build</option>
+            <option value="BugFixing">Bug Fixing</option>
+            <option value="Asset Extraction">Asset Extraction</option>
+            <option value="Asset Audit">Asset Audit</option>
+            <option value="Pre Audit">Pre Audit</option>
+            <option value="Change Round Asset Audit">Change Round Asset Audit</option>
+            <option value="Misc.">Misc.</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>🎯 Complexity</label>
+        <div class="select-wrap">
+          <select id="e_complexity"><option value="">Select...</option><option value="Low">Low</option><option value="High">High</option><option value="Complex">Complex</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>⚡ Task Efforts</label><input id="e_efforts" type="text" placeholder="e.g. 2h design"/></div>
+      <div class="form-group full"><label>🐛 Issues / Notes</label><textarea id="e_issues" placeholder="Issues, blockers, notes..."></textarea></div>
+      <div class="form-group"><label>📅 Start Date</label><input id="e_startDate" type="date"/></div>
+      <div class="form-group"><label>⏰ Start Time</label><input id="e_startTime" type="time" step="1"/></div>
+      <div class="form-group"><label>📅 End Date</label><input id="e_endDate" type="date"/></div>
+      <div class="form-group"><label>⏰ End Time</label><input id="e_endTime" type="time" step="1"/></div>
+      <div class="dur-preview" id="durPreview">— Select dates &amp; times —</div>
+      <div class="form-group full">
+        <label>📎 Attachments <span style="color:var(--muted);font-size:10px;letter-spacing:0;text-transform:none;font-weight:600">(local + Excel only)</span></label>
+        <div class="attach-zone" onclick="document.getElementById('modalAttachInput').click()">
+          <input type="file" id="modalAttachInput" multiple accept="image/*" style="display:none" onchange="handleAttachFiles(event,'modal')"/>
+          <div class="attach-drop">📎 Click to attach images (max 3)</div>
+        </div>
+        <div class="attach-preview" id="modalAttachPreview"></div>
+      </div>
+    </div>
+    <button class="btn-modal-save" id="modalSaveBtn" onclick="saveEntryModal()">💾 Save Entry</button>
+  </div>
+</div>
+
+<!-- ══ SYNC STATUS MODAL ══ -->
+<div class="modal-overlay" id="syncModal">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <div class="modal-title">🔄 Sync Status Report</div>
+      <button class="modal-close" onclick="closeSyncModal()">✕</button>
+    </div>
+    <div class="sync-summary-grid">
+      <div class="sync-stat-box ssb-total" ><div class="snum" id="smTotal">0</div><div class="slbl">Total</div></div>
+      <div class="sync-stat-box ssb-synced"><div class="snum" id="smSynced">0</div><div class="slbl">✓ Synced</div></div>
+      <div class="sync-stat-box ssb-unsync"><div class="snum" id="smUnsync">0</div><div class="slbl">⚠ Pending</div></div>
+    </div>
+    <button class="btn-resync-all" id="resyncAllBtn" onclick="resyncAllFromModal()">⟳ Re-sync All Pending</button>
+    <div class="sync-list-header" id="syncListHeader">All Records</div>
+    <div class="sync-list" id="syncList"></div>
+    <div class="note-box">
+      ℹ️ <strong>Sync uses no-cors + credentials:include</strong> → sends Google login cookies → no 401 error. If you're logged into <strong>wppproduction.com</strong> in Chrome, sync works. Check your Google Sheet to confirm data arrived.
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════════
+const SHEET_API     = "https://script.google.com/macros/s/AKfycbwVRodrhj13Dql8ERu13HNT1ElB7j09H9dIU6vdRneIVqU4ls5U8HAkkXu5bDK6yxhQ0Q/exec";
+const RING_CIRC     = 2 * Math.PI * 80;
+const MAX_RING_SECS = 3600;
+const MAX_ATTACH    = 3;
+const RETRY_DELAYS  = [5000, 15000, 30000, 60000, 120000];
+const DEFAULT_REM_MINS = 10;
+
+// ════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════
+let timerStatus    = "Stopped";
+let timerStartTS   = null;
+let accumulatedMs  = 0;
+let timerInterval  = null;
+let sessionStartDT = null;
+
+// Reminder state
+let reminderOn       = false;
+let reminderInterval = null;
+let reminderMinutes  = DEFAULT_REM_MINS;
+let _audioCtx        = null;  // cached AudioContext (warmed on user interaction)
+
+// Sync state
+let data       = [];
+let syncQueue  = [];
+let isSyncing  = false;
+let retryTimer = null;
+
+// Modal state
+let currentEditId    = null;   // null=create, id=edit existing
+let isEditFromTimer  = false;  // true when "Edit & Save" from stop confirm
+let pendingStop      = null;   // holds timer data when stop confirm is open
+let mainAttachments  = [];
+let modalAttachments = [];
+
+// Reminder UI state
+let uiReminderMins = DEFAULT_REM_MINS;
+
+// ════════════════════════════════════════════════════════
+// UTILITIES
+// ════════════════════════════════════════════════════════
+const uid      = () => `${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+const pad      = n  => String(n).padStart(2,'0');
+const normName = s  => s.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+const sleep    = ms => new Promise(r => setTimeout(r, ms));
+
+function fmtDate(d) { return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`; }
+function fmtTime(d) { return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+function isoToDisplay(iso) { if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function displayToIso(s)   { if(!s||!s.includes('/')) return s||''; const [d,m,y]=s.split('/'); return `${y}-${m}-${d}`; }
+function fmtHMS(s) { return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`; }
+function fmtDur(s) {
+  if(s<=0) return '0s';
+  const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+  return [h?`${h}h`:'', (m||h)?`${m}m`:'', `${sec}s`].filter(Boolean).join(' ');
+}
+
+// ════════════════════════════════════════════════════════
+// ★ AUDIO — pre-warmed AudioContext for reliable playback
+// Warm on ANY user interaction so setInterval callback can play freely
+// ════════════════════════════════════════════════════════
+function warmAudio() {
+  if(_audioCtx) return;
+  try {
+    const C = window.AudioContext || window.webkitAudioContext;
+    if(!C) return;
+    _audioCtx = new C();
+    // Create and immediately stop a silent buffer to unlock audio
+    const buf = _audioCtx.createBuffer(1,1,22050);
+    const src = _audioCtx.createBufferSource();
+    src.buffer = buf; src.connect(_audioCtx.destination); src.start(0);
+  } catch(e){}
+}
+
+// Warm on first click/touch anywhere
+document.addEventListener('click',   warmAudio, { once:true });
+document.addEventListener('keydown',  warmAudio, { once:true });
+document.addEventListener('touchstart',warmAudio,{ once:true });
+
+function playBeep() {
+  try {
+    const C = window.AudioContext || window.webkitAudioContext;
+    if(!C) return;
+    // Use cached ctx or create new one
+    const ctx = _audioCtx || new C();
+    if(ctx.state === 'suspended') { ctx.resume(); }
+    // 3-tone alert: 880Hz → 1100Hz → 880Hz
+    const tones = [[880,0,.15],[1100,.22,.15],[880,.44,.25]];
+    tones.forEach(([freq,start,dur]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.value = freq;
+      const t = ctx.currentTime;
+      gain.gain.setValueAtTime(0,        t+start);
+      gain.gain.linearRampToValueAtTime(.32, t+start+.02);
+      gain.gain.linearRampToValueAtTime(0,   t+start+dur);
+      osc.start(t+start);
+      osc.stop (t+start+dur+.05);
+    });
+  } catch(e){ console.warn('Audio error:', e.message); }
+}
+
+// ════════════════════════════════════════════════════════
+// TIMER DISPLAY
+// ════════════════════════════════════════════════════════
+function liveMs()  { return timerStatus==="Running"&&timerStartTS ? accumulatedMs+(Date.now()-timerStartTS) : accumulatedMs; }
+function liveSec() { return Math.floor(liveMs()/1000); }
+
+function refreshDisplay() {
+  const s = liveSec();
+  document.getElementById("timerDisplay").textContent = fmtHMS(s);
+  document.getElementById("ringProgress").style.strokeDashoffset = RING_CIRC - Math.min(s/MAX_RING_SECS,1)*RING_CIRC;
+}
+
+function setStatus(s) {
+  timerStatus = s;
+  const badge = document.getElementById("statusBadge");
+  badge.className = "status-badge";
+  const cfg = {
+    Running: ['status-running','<span class="dot"></span> Running'],
+    Paused:  ['status-paused', '<span class="dot"></span> Paused'],
+    Stopped: ['status-stopped','<span class="dot"></span> Stopped']
+  };
+  badge.classList.add(cfg[s][0]); badge.innerHTML = cfg[s][1];
+}
+
+// ════════════════════════════════════════════════════════
+// ★ SYNC ENGINE — no-cors + credentials:include (fixes 401 & CORS)
+// ════════════════════════════════════════════════════════
+async function callSheet(payload) {
+  try {
+    await fetch(SHEET_API, {
+      method:      'POST',
+      mode:        'no-cors',    // prevents CORS error for domain-restricted GAS
+      credentials: 'include',   // sends Google login cookies (fixes 401)
+      headers:     { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body:        new URLSearchParams({ data: JSON.stringify(payload) }).toString()
+    });
+    // With no-cors, response is opaque — if no exception was thrown, request dispatched ✓
+    return true;
+  } catch(e) {
+    // Only throws on true network failure (offline, DNS error)
+    return false;
+  }
+}
+
+function enqueue(payload) {
+  syncQueue = syncQueue.filter(q => !(q.payload._id===payload._id && q.payload.action===payload.action));
+  syncQueue.push({ _opId:uid(), payload, retries:0 });
+  saveLocal();
+  processQueue();
+}
+
+async function processQueue() {
+  if(isSyncing || syncQueue.length===0) return;
+  isSyncing = true; clearTimeout(retryTimer);
+  setSyncBar("syncing","Syncing to Google Sheet…");
+
+  const batch = [...syncQueue]; let fails = 0;
+  for(const op of batch) {
+    const ok = await callSheet(op.payload);
+    if(ok) {
+      syncQueue = syncQueue.filter(q => q._opId !== op._opId);
+      if(op.payload._id) {
+        const rec = data.find(d => d._id===op.payload._id);
+        if(rec) { rec.synced=true; rec.syncedAt=new Date().toISOString(); }
+      }
+      saveLocal();
+    } else {
+      op.retries = (op.retries||0)+1; fails++;
+    }
+    await sleep(200);
+  }
+
+  saveLocal(); isSyncing=false; renderTable(); renderSyncStats();
+
+  if(syncQueue.length===0) { setSyncBar("synced","All records synced ✓"); }
+  else {
+    const delay = RETRY_DELAYS[Math.min((syncQueue[0].retries||1)-1, RETRY_DELAYS.length-1)];
+    setSyncBar("pending",`${syncQueue.length} pending — retry in ${Math.round(delay/1000)}s`);
+    retryTimer = setTimeout(processQueue, delay);
+  }
+}
+
+function setSyncBar(state, msg) {
+  const bar=document.getElementById("syncBar"), dot=document.getElementById("syncDot");
+  bar.className = `sync-bar ${state}`;
+  dot.className = `sync-dot${state==='syncing'?' blink':''}`;
+  document.getElementById("syncMsg").innerHTML = msg +
+    (state==='pending' ? ` <button class="sync-retry-btn" onclick="processQueue()">Retry</button>` : '');
+}
+
+const saveLocal = () => {
+  localStorage.setItem("ttd_data",  JSON.stringify(data));
+  localStorage.setItem("ttd_queue", JSON.stringify(syncQueue));
+};
+
+// ─── Sync Stats Bar ───────────────────────────────────
+function renderSyncStats() {
+  const total=data.length, synced=data.filter(r=>r.synced===true).length, unsync=total-synced;
+  const row=document.getElementById("syncStatsRow");
+  if(!total){ row.style.display='none'; return; }
+  row.style.display='flex';
+  document.getElementById("ssBadgeTotal").textContent  = `📊 Total: ${total}`;
+  document.getElementById("ssBadgeSynced").textContent = `✓ Synced: ${synced}`;
+  const ub=document.getElementById("ssBadgeUnsync"), rb=document.getElementById("ssResyncBtn");
+  if(unsync>0){ ub.textContent=`⚠ Pending: ${unsync}`; ub.style.display='inline-flex'; rb.style.display='inline-block'; }
+  else        { ub.style.display='none'; rb.style.display='none'; }
+}
+
+// ─── Re-sync ──────────────────────────────────────────
+function resyncAll() {
+  const unsynced = data.filter(r=>r.synced!==true);
+  if(!unsynced.length){ showToast("✓ All records already synced!","success"); return; }
+  unsynced.forEach(r => enqueue(buildPayload(r,"resync")));
+  showToast(`⟳ Re-syncing ${unsynced.length} records…`,"warn");
+}
+
+function resyncRecord(id) {
+  const rec=data.find(d=>d._id===id); if(!rec) return;
+  enqueue(buildPayload(rec,"resync"));
+  showToast("⟳ Re-syncing record…","warn");
+  if(document.getElementById("syncModal").classList.contains("open")) renderSyncModalContent();
+}
+
+function resyncAllFromModal() {
+  resyncAll(); setTimeout(renderSyncModalContent,600);
+}
+
+// ─── Sync Modal ───────────────────────────────────────
+function openSyncModal()  { renderSyncModalContent(); document.getElementById("syncModal").classList.add("open"); }
+function closeSyncModal() { document.getElementById("syncModal").classList.remove("open"); }
+document.getElementById("syncModal").addEventListener("click",function(e){ if(e.target===this) closeSyncModal(); });
+
+function renderSyncModalContent() {
+  const total=data.length, synced=data.filter(r=>r.synced===true).length, unsync=total-synced;
+  document.getElementById("smTotal").textContent  = total;
+  document.getElementById("smSynced").textContent = synced;
+  document.getElementById("smUnsync").textContent = unsync;
+  const btn=document.getElementById("resyncAllBtn");
+  btn.disabled    = (unsync===0);
+  btn.textContent = unsync>0 ? `⟳ Re-sync All Pending (${unsync})` : `✓ All Records Synced`;
+
+  const sorted=[...data].sort((a,b)=>(a.synced===true?1:-1));
+  document.getElementById("syncListHeader").textContent = `All Records — ${unsync} pending`;
+  document.getElementById("syncList").innerHTML = !total
+    ? `<div style="text-align:center;padding:32px;color:var(--muted)">No records yet</div>`
+    : sorted.map(r=>{
+        const ok=r.synced===true;
+        const when=r.syncedAt?`<br><span style="font-size:10px;color:var(--muted)">${new Date(r.syncedAt).toLocaleString()}</span>`:'';
+        return `
+        <div class="sync-list-item ${ok?'synced':'unsynced'}" id="sli_${r._id}">
+          <span style="font-size:18px;color:${ok?'var(--green)':'var(--yellow)'};flex-shrink:0">${ok?'✓':'⚠'}</span>
+          <div class="sli-info">
+            <div class="sli-name">${r.user} · #${r.project}</div>
+            <div class="sli-meta">${r.request} · ${r.startDate} · ${r.duration}${when}</div>
+          </div>
+          ${!ok?`<button class="btn-sli-sync" id="slibtn_${r._id}" onclick="singleResync('${r._id}')">⟳ Sync</button>`
+               :`<span style="font-size:12px;color:var(--green);font-weight:700">✓</span>`}
+        </div>`;
+      }).join('');
+}
+
+async function singleResync(id) {
+  const btn=document.getElementById(`slibtn_${id}`);
+  if(btn){ btn.disabled=true; btn.textContent='…'; }
+  const rec=data.find(d=>d._id===id); if(!rec) return;
+  const ok=await callSheet(buildPayload(rec,"resync"));
+  if(ok){ rec.synced=true; rec.syncedAt=new Date().toISOString(); saveLocal(); showToast("✓ Record synced!","success"); }
+  else  { showToast("⚠️ Network error — check connection","error"); if(btn){ btn.disabled=false; btn.textContent='⟳'; } }
+  renderSyncModalContent(); renderSyncStats(); renderTable();
+}
+
+// ════════════════════════════════════════════════════════
+// LOGIN
+// ════════════════════════════════════════════════════════
+function loginUser() {
+  const raw=document.getElementById("loginUser").value.trim();
+  if(!raw){ showToast("Please enter your name","error"); return; }
+  const name=normName(raw);
+  localStorage.setItem("ttd_user", name);
+  showApp(name);
+}
+
+function logoutUser() {
+  localStorage.removeItem("ttd_user");
+  location.reload();
+}
+
+function showApp(name) {
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("mainApp").classList.add("visible");
+  document.getElementById("loggedUserName").textContent = name;
+  const usernameEl = document.getElementById("username");
+  usernameEl.value = name; usernameEl.readOnly = true;
+  document.getElementById("ringProgress").style.strokeDasharray  = RING_CIRC;
+  document.getElementById("ringProgress").style.strokeDashoffset = RING_CIRC;
+  initData();
+}
+
+// ════════════════════════════════════════════════════════
+// TIMER CONTROLS
+// ════════════════════════════════════════════════════════
+function toggleTimer() {
+  const btn=document.getElementById("startBtn");
+  if(timerStatus==="Running") {
+    // PAUSE
+    accumulatedMs += Date.now()-timerStartTS; timerStartTS=null;
+    clearInterval(timerInterval); stopReminderInterval();
+    setStatus("Paused"); btn.className="btn btn-start";
+    document.getElementById("startLabel").textContent="Resume";
+    document.getElementById("startIcon").textContent ="▶";
+  } else {
+    // START / RESUME
+    const rawUser=document.getElementById("username").value.trim();
+    const project=document.getElementById("project").value.trim();
+    if(!rawUser||!project){ showToast("⚠️ Fill Project ID first","error"); return; }
+    if(!sessionStartDT) sessionStartDT=new Date();
+    timerStartTS=Date.now(); setStatus("Running");
+    btn.className="btn btn-pause";
+    document.getElementById("startLabel").textContent="Pause";
+    document.getElementById("startIcon").textContent ="⏸";
+    timerInterval=setInterval(refreshDisplay,500);
+    startReminderInterval(); // restart reminder on resume
+  }
+}
+
+// STOP — shows confirmation popup instead of saving directly
+function stopTimer() {
+  const rawUser    = document.getElementById("username").value.trim();
+  const project    = document.getElementById("project").value.trim();
+  const request    = document.getElementById("request").value;
+  const complexity = document.getElementById("complexity").value;
+  const efforts    = document.getElementById("efforts").value.trim();
+  const issues     = document.getElementById("issues").value.trim();
+
+  if(!rawUser||!project){ showToast("⚠️ User Name & Project ID required","error"); return; }
+
+  const snapshotMs = liveMs();
+  const totalSec   = Math.floor(snapshotMs/1000);
+  if(totalSec===0){ showToast("⚠️ No time recorded yet","error"); return; }
+
+  // Pause timer while confirmation is shown (don't reset yet)
+  if(timerStatus==="Running"){
+    accumulatedMs += Date.now()-timerStartTS; timerStartTS=null;
+    clearInterval(timerInterval); stopReminderInterval();
+    setStatus("Paused");
+    document.getElementById("startBtn").className="btn btn-start";
+    document.getElementById("startLabel").textContent="Resume";
+    document.getElementById("startIcon").textContent ="▶";
+  }
+
+  const endDT   = new Date();
+  const startDT = sessionStartDT || new Date(endDT.getTime()-snapshotMs);
+
+  // Store pending session data
+  pendingStop = { user:normName(rawUser), project, request:request||'—', complexity, efforts, issues, startDT, endDT, totalSec, attachments:[...mainAttachments] };
+
+  // Populate confirmation popup
+  document.getElementById("sc_duration").textContent = fmtHMS(totalSec);
+  document.getElementById("sc_user").textContent     = normName(rawUser);
+  document.getElementById("sc_project").textContent  = `#${project}`;
+  document.getElementById("sc_request").textContent  = request||'—';
+  document.getElementById("sc_start").textContent    = `${fmtDate(startDT)} ${fmtTime(startDT)}`;
+  document.getElementById("sc_end").textContent      = `${fmtDate(endDT)} ${fmtTime(endDT)}`;
+
+  document.getElementById("stopConfirmModal").classList.add("open");
+}
+
+// ── Stop Confirm Actions ──────────────────────────────
+
+function confirmSaveNow() {
+  if(!pendingStop) return;
+  document.getElementById("stopConfirmModal").classList.remove("open");
+  const rec = mkRecord(pendingStop);
+  pendingStop = null;
+  persistRecord(rec);
+  resetTimerUI();
+  clearMainForm();
+  showToast("✓ Session saved & syncing!","success");
+}
+
+function editBeforeStop() {
+  if(!pendingStop) return;
+  document.getElementById("stopConfirmModal").classList.remove("open");
+  isEditFromTimer = true;
+  currentEditId   = null; // create mode
+  modalAttachments = [...(pendingStop.attachments||[])];
+
+  // Open entry modal pre-filled with timer data
+  document.getElementById("modalTitle").textContent   = "✏️ Add Details to Session";
+  document.getElementById("modalSaveBtn").textContent = "✓ Save Session";
+  document.getElementById("e_user").value             = pendingStop.user;
+  document.getElementById("e_project").value          = pendingStop.project;
+  document.getElementById("e_request").value          = pendingStop.request!=='—' ? pendingStop.request : '';
+  document.getElementById("e_complexity").value       = pendingStop.complexity||'';
+  document.getElementById("e_efforts").value          = pendingStop.efforts||'';
+  document.getElementById("e_issues").value           = pendingStop.issues||'';
+  // Pre-fill start/end from timer (readonly-style: fields are filled but editable)
+  document.getElementById("e_startDate").value        = displayToIso(fmtDate(pendingStop.startDT));
+  document.getElementById("e_startTime").value        = fmtTime(pendingStop.startDT);
+  document.getElementById("e_endDate").value          = displayToIso(fmtDate(pendingStop.endDT));
+  document.getElementById("e_endTime").value          = fmtTime(pendingStop.endDT);
+
+  renderAttachPreviews('modalAttachPreview', modalAttachments, 'modal');
+  calcDurPreview();
+  document.getElementById("entryModal").classList.add("open");
+}
+
+function discardStop() {
+  // Cancel — resume timer if it was paused by stop button
+  document.getElementById("stopConfirmModal").classList.remove("open");
+  pendingStop = null;
+  // Resume timer
+  if(timerStatus==="Paused" && sessionStartDT) {
+    timerStartTS=Date.now(); setStatus("Running");
+    document.getElementById("startBtn").className="btn btn-pause";
+    document.getElementById("startLabel").textContent="Pause";
+    document.getElementById("startIcon").textContent ="⏸";
+    timerInterval=setInterval(refreshDisplay,500);
+    startReminderInterval();
+    showToast("▶ Timer resumed","success");
+  }
+}
+
+function clearMainForm() {
+  document.getElementById("project").value    = '';
+  document.getElementById("request").value    = '';
+  document.getElementById("complexity").value = '';
+  document.getElementById("efforts").value    = '';
+  document.getElementById("issues").value     = '';
+  mainAttachments=[]; renderAttachPreviews("mainAttachPreview",mainAttachments,'main');
+}
+
+function resetTimerUI() {
+  clearInterval(timerInterval);
+  accumulatedMs=0; timerStartTS=null; sessionStartDT=null;
+  setStatus("Stopped");
+  document.getElementById("timerDisplay").textContent = "00:00:00";
+  document.getElementById("ringProgress").style.strokeDashoffset = RING_CIRC;
+  document.getElementById("startBtn").className = "btn btn-start";
+  document.getElementById("startLabel").textContent = "Start";
+  document.getElementById("startIcon").textContent  = "▶";
+}
+
+// ════════════════════════════════════════════════════════
+// ★ REMINDER — fully fixed with custom time + pre-warmed audio
+// ════════════════════════════════════════════════════════
+function openReminderModal() {
+  // Load saved settings
+  reminderMinutes = parseInt(localStorage.getItem("ttd_rem_mins")||DEFAULT_REM_MINS, 10);
+  uiReminderMins  = reminderMinutes;
+  updateReminderUI();
+  document.getElementById("reminderModal").classList.add("open");
+}
+
+function closeReminderModal() { document.getElementById("reminderModal").classList.remove("open"); }
+document.getElementById("reminderModal").addEventListener("click",function(e){ if(e.target===this) closeReminderModal(); });
+
+function updateReminderUI() {
+  document.getElementById("remMinsDisplay").textContent  = uiReminderMins;
+  document.getElementById("remNoteMinutes").textContent  = uiReminderMins;
+  const statusBadge = document.getElementById("reminderStatusBadge");
+  const statusDot   = document.getElementById("reminderStatusDot");
+  const statusText  = document.getElementById("reminderStatusText");
+  const badge       = document.getElementById("reminderBadge");
+
+  if(reminderOn) {
+    statusBadge.className = "reminder-status-badge rsb-on";
+    statusDot.textContent = "●"; statusText.textContent = `ON — every ${reminderMinutes} min`;
+    badge.textContent = `${reminderMinutes}m`; badge.style.display = 'block';
+    document.getElementById("reminderBtn").classList.add("active");
+  } else {
+    statusBadge.className = "reminder-status-badge rsb-off";
+    statusDot.textContent = "○"; statusText.textContent = "OFF";
+    badge.style.display = 'none';
+    document.getElementById("reminderBtn").classList.remove("active");
+  }
+}
+
+function adjustReminder(delta) {
+  uiReminderMins = Math.max(1, Math.min(120, uiReminderMins + delta));
+  document.getElementById("remMinsDisplay").textContent = uiReminderMins;
+  document.getElementById("remNoteMinutes").textContent = uiReminderMins;
+}
+
+function enableReminder() {
+  reminderMinutes = uiReminderMins;
+  reminderOn      = true;
+  localStorage.setItem("ttd_rem_mins", reminderMinutes);
+  updateReminderUI();
+  if(timerStatus==="Running") startReminderInterval();
+  showToast(`🔔 Reminder ON — every ${reminderMinutes} min`,"success");
+  closeReminderModal();
+}
+
+function disableReminder() {
+  reminderOn = false;
+  stopReminderInterval();
+  updateReminderUI();
+  showToast("🔕 Reminder OFF","success");
+  closeReminderModal();
+}
+
+function testReminderNow() {
+  playBeep();
+  showToast("🔊 Test sound played!","success");
+}
+
+function startReminderInterval() {
+  stopReminderInterval();
+  if(!reminderOn) return;
+  const ms = reminderMinutes * 60 * 1000;
+  reminderInterval = setInterval(fireReminder, ms);
+}
+
+function stopReminderInterval() {
+  if(reminderInterval){ clearInterval(reminderInterval); reminderInterval=null; }
+}
+
+function fireReminder() {
+  playBeep(); // plays via cached AudioContext — works in setInterval
+  if("Notification" in window && Notification.permission==="granted") {
+    try{ new Notification("⏱ Task Timer", { body:`Still working? Timer has been running for a while!`, tag:"ttd-reminder" }); }catch(e){}
+  }
+  showToast(`🔔 Reminder: Timer still running! (${fmtHMS(liveSec())})`, "warn");
+}
+
+// ════════════════════════════════════════════════════════
+// ATTACHMENTS
+// ════════════════════════════════════════════════════════
+async function handleAttachFiles(event, target) {
+  const files=Array.from(event.target.files);
+  const arr=target==='main'?mainAttachments:modalAttachments;
+  const pid=target==='main'?'mainAttachPreview':'modalAttachPreview';
+  for(const file of files){
+    if(arr.length>=MAX_ATTACH){ showToast(`⚠️ Max ${MAX_ATTACH} images`,"warn"); break; }
+    if(!file.type.startsWith('image/')){ showToast("⚠️ Only images allowed","error"); continue; }
+    try{ arr.push({name:file.name,type:file.type,data:await resizeImage(file,500,.65)}); }
+    catch(e){ showToast("⚠️ Image processing failed","error"); }
+  }
+  event.target.value='';
+  renderAttachPreviews(pid, arr, target);
+}
+
+function resizeImage(file,maxPx,q){
+  return new Promise((res,rej)=>{
+    const r=new FileReader(); r.onerror=rej;
+    r.onload=e=>{
+      const img=new Image(); img.onerror=rej;
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        if(w>maxPx||h>maxPx){ if(w>h){h=Math.round(h*maxPx/w);w=maxPx;}else{w=Math.round(w*maxPx/h);h=maxPx;} }
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h); res(c.toDataURL('image/jpeg',q));
+      }; img.src=e.target.result;
+    }; r.readAsDataURL(file);
+  });
+}
+
+function renderAttachPreviews(pid,arr,target){
+  const wrap=document.getElementById(pid); if(!wrap) return;
+  wrap.innerHTML=arr.map((a,i)=>`
+    <div class="thumb-wrap">
+      <img src="${a.data}" alt="${a.name}" onclick="openLightbox('${a.data}')"/>
+      <button class="thumb-remove" onclick="removeAttach(${i},'${target}')">×</button>
+    </div>`).join('');
+}
+function removeAttach(idx,target){
+  (target==='main'?mainAttachments:modalAttachments).splice(idx,1);
+  renderAttachPreviews(target==='main'?'mainAttachPreview':'modalAttachPreview',target==='main'?mainAttachments:modalAttachments,target);
+}
+function openLightbox(src){
+  const lb=document.createElement('div'); lb.className='lightbox';
+  lb.innerHTML=`<img src="${src}"/>`; lb.onclick=()=>document.body.removeChild(lb);
+  document.body.appendChild(lb);
+}
+
+// ════════════════════════════════════════════════════════
+// ENTRY MODAL — Manual / Edit / EditFromTimer
+// ════════════════════════════════════════════════════════
+function openEntryModal(editId){
+  // Reset fromTimer flag when opening manually
+  isEditFromTimer=false; pendingStop=null;
+  currentEditId=editId; modalAttachments=[];
+  const today=new Date().toISOString().slice(0,10);
+
+  if(editId===null){
+    document.getElementById("modalTitle").textContent   = "✏️ Manual Entry";
+    document.getElementById("modalSaveBtn").textContent = "💾 Save Entry";
+    document.getElementById("e_user").value             = document.getElementById("username").value||'';
+    document.getElementById("e_project").value          = document.getElementById("project").value||'';
+    document.getElementById("e_request").value          = '';
+    document.getElementById("e_complexity").value       = '';
+    document.getElementById("e_efforts").value          = '';
+    document.getElementById("e_issues").value           = '';
+    document.getElementById("e_startDate").value        = today;
+    document.getElementById("e_endDate").value          = today;
+    document.getElementById("e_startTime").value        = '';
+    document.getElementById("e_endTime").value          = '';
+    setDurPreview('');
+  } else {
+    const rec=data.find(d=>d._id===editId); if(!rec) return;
+    document.getElementById("modalTitle").textContent   = "✏️ Edit Record";
+    document.getElementById("modalSaveBtn").textContent = "💾 Update Same Row";
+    document.getElementById("e_user").value             = rec.user;
+    document.getElementById("e_project").value          = rec.project;
+    document.getElementById("e_request").value          = rec.request!=='—'?rec.request:'';
+    document.getElementById("e_complexity").value       = rec.complexity||'';
+    document.getElementById("e_efforts").value          = rec.efforts||'';
+    document.getElementById("e_issues").value           = rec.issues||'';
+    document.getElementById("e_startDate").value        = displayToIso(rec.startDate);
+    document.getElementById("e_endDate").value          = displayToIso(rec.endDate);
+    document.getElementById("e_startTime").value        = rec.startTime||'';
+    document.getElementById("e_endTime").value          = rec.endTime||'';
+    modalAttachments=[...(rec.attachments||[])];
+    setDurPreview(rec.duration||'');
+  }
+  renderAttachPreviews('modalAttachPreview',modalAttachments,'modal');
+  calcDurPreview();
+  document.getElementById("entryModal").classList.add("open");
+}
+
+function closeEntryModal(){
+  // If closing mid editFromTimer flow, resume timer
+  if(isEditFromTimer && pendingStop){
+    pendingStop=null; isEditFromTimer=false;
+    discardStop(); // resumes timer
+  }
+  document.getElementById("entryModal").classList.remove("open");
+}
+document.getElementById("entryModal").addEventListener("click",function(e){ if(e.target===this) closeEntryModal(); });
+
+["e_startDate","e_startTime","e_endDate","e_endTime"].forEach(id=>
+  document.getElementById(id).addEventListener("input",calcDurPreview));
+
+function calcDurPreview(){
+  const sd=document.getElementById("e_startDate").value, st=document.getElementById("e_startTime").value;
+  const ed=document.getElementById("e_endDate").value,   et=document.getElementById("e_endTime").value;
+  if(!sd||!st||!ed||!et){ setDurPreview(''); return; }
+  const diff=Math.round((new Date(`${ed}T${et}`)-new Date(`${sd}T${st}`))/1000);
+  const p=document.getElementById("durPreview");
+  if(diff<=0){ p.textContent="⚠️ End must be after Start"; p.style.color="var(--red)"; p.style.borderColor="rgba(255,71,87,.3)"; }
+  else       { p.textContent=`⏱ Duration: ${fmtDur(diff)}`; p.style.color="var(--accent)"; p.style.borderColor="rgba(0,229,255,.2)"; }
+}
+function setDurPreview(txt){
+  const p=document.getElementById("durPreview");
+  p.textContent=txt||'— Select dates & times —'; p.style.color="var(--accent)"; p.style.borderColor="rgba(0,229,255,.2)";
+}
+
+function saveEntryModal(){
+  const rawUser   =document.getElementById("e_user").value.trim();
+  const project   =document.getElementById("e_project").value.trim();
+  const request   =document.getElementById("e_request").value;
+  const complexity=document.getElementById("e_complexity").value;
+  const efforts   =document.getElementById("e_efforts").value.trim();
+  const issues    =document.getElementById("e_issues").value.trim();
+  const sd=document.getElementById("e_startDate").value, st=document.getElementById("e_startTime").value;
+  const ed=document.getElementById("e_endDate").value,   et=document.getElementById("e_endTime").value;
+
+  if(!rawUser||!project) { showToast("⚠️ User Name & Project ID required","error"); return; }
+  if(!sd||!st||!ed||!et) { showToast("⚠️ All date & time fields required","error"); return; }
+
+  const startDT  = new Date(`${sd}T${st}`), endDT=new Date(`${ed}T${et}`);
+  const totalSec = Math.round((endDT-startDT)/1000);
+  if(totalSec<=0){ showToast("⚠️ End must be after Start","error"); return; }
+
+  const user=normName(rawUser);
+
+  if(isEditFromTimer && pendingStop){
+    // SAVE FROM TIMER (after "Edit & Save" on stop confirm)
+    const rec = mkRecord({ user, project, request:request||'—', complexity, efforts, issues, startDT, endDT, totalSec, isManual:false, attachments:[...modalAttachments] });
+    pendingStop=null; isEditFromTimer=false;
+    persistRecord(rec);
+    resetTimerUI();
+    clearMainForm();
+    document.getElementById("entryModal").classList.remove("open");
+    showToast("✓ Session saved with details!","success");
+
+  } else if(currentEditId===null){
+    // MANUAL CREATE
+    const rec=mkRecord({ user, project, request:request||'—', complexity, efforts, issues, startDT, endDT, totalSec, isManual:true, attachments:[...modalAttachments] });
+    persistRecord(rec);
+    document.getElementById("entryModal").classList.remove("open");
+    showToast("✓ Manual entry saved!","success");
+
+  } else {
+    // EDIT EXISTING — updates same row via _id upsert in GAS
+    const rec=data.find(d=>d._id===currentEditId);
+    if(!rec){ showToast("⚠️ Record not found","error"); return; }
+    rec.user=user; rec.project=project; rec.request=request||'—';
+    rec.complexity=complexity; rec.efforts=efforts; rec.issues=issues;
+    rec.startDate=fmtDate(startDT); rec.startTime=fmtTime(startDT);
+    rec.endDate  =fmtDate(endDT);   rec.endTime  =fmtTime(endDT);
+    rec.durationSec=totalSec; rec.duration=fmtDur(totalSec);
+    rec.attachments=[...modalAttachments];
+    rec.synced=false; // mark for re-sync
+    saveLocal(); renderTable(); renderSyncStats();
+    // action:"edit" → GAS upserts by _id → same row updated, no new row
+    enqueue(buildPayload(rec,"edit"));
+    document.getElementById("entryModal").classList.remove("open");
+    showToast("✓ Updated same row in Google Sheet!","success");
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// DATA HELPERS
+// ════════════════════════════════════════════════════════
+function mkRecord({ user, project, request, complexity, efforts, issues, startDT, endDT, totalSec, isManual, attachments }) {
+  return {
+    _id:        uid(),
+    user, project, request,
+    complexity: complexity||'', efforts:efforts||'', issues:issues||'',
+    startDate:  fmtDate(startDT), startTime:fmtTime(startDT),
+    endDate:    fmtDate(endDT),   endTime:  fmtTime(endDT),
+    durationSec:totalSec, duration:fmtDur(totalSec),
+    isManual:   !!isManual, attachments:attachments||[],
+    synced:false, syncedAt:null
+  };
+}
+
+// Build payload for Google Sheet — ALL fields (no attachments)
+function buildPayload(rec, action="save") {
+  return {
+    action,
+    _id:         rec._id,
+    user:        rec.user,
+    project:     rec.project,
+    request:     rec.request,
+    complexity:  rec.complexity,
+    efforts:     rec.efforts,
+    issues:      rec.issues,
+    startDate:   rec.startDate,
+    startTime:   rec.startTime,
+    endDate:     rec.endDate,
+    endTime:     rec.endTime,
+    duration:    rec.duration,
+    durationSec: rec.durationSec,
+    isManual:    rec.isManual?"Yes":"No"
+  };
+}
+
+function persistRecord(rec){
+  data.push(rec); saveLocal(); renderTable(); renderSyncStats();
+  enqueue(buildPayload(rec,"save"));
+}
+
+// ════════════════════════════════════════════════════════
+// TABLE RENDER
+// ════════════════════════════════════════════════════════
+function reqTag(req){
+  if(!req) return ''; const r=req.toLowerCase();
+  if(r==='cr') return 'tag-cr'; if(r==='build') return 'tag-build';
+  if(r.includes('bug')) return 'tag-bug'; if(r==='asset extraction') return 'tag-asset';
+  if(r.includes('audit')||r.includes('change round')) return 'tag-audit';
+  if(r.includes('misc')) return 'tag-misc'; return '';
+}
+function cxTag(c){ if(!c) return ''; const m={Low:'tag-low',High:'tag-high',Complex:'tag-complex'}; return `<span class="tag ${m[c]||''}">${c}</span>`; }
+function syncIcon(r){ return r.synced===true?`<span class="si si-ok" title="Synced">✓</span>`:`<span class="si si-no" title="Pending sync">⚠</span>`; }
+
+function renderTable(){
+  const ct=document.getElementById("tableContainer");
+  document.getElementById("recordCount").textContent=data.length;
+  if(!data.length){
+    ct.innerHTML=`<div class="empty-state"><div class="icon">📋</div><p>No sessions yet. Start your first timer!</p></div>`;
+    return;
+  }
+  const rows=[...data].reverse().map(r=>{
+    const att=r.attachments&&r.attachments.length;
+    const sc=r.synced===true?`<span class="sync-chip sc-ok">✓ Synced</span>`:`<span class="sync-chip sc-no">⚠ Pending</span>`;
+    return `
+    <tr class="main-row" onclick="toggleDetail('${r._id}')">
+      <td><strong>${r.user}</strong></td>
+      <td><span style="font-family:'Space Mono',monospace;color:var(--accent)">#${r.project}</span></td>
+      <td><span class="tag ${reqTag(r.request)}">${r.request}</span>${r.isManual?'<span class="tag tag-manual">MANUAL</span>':''}</td>
+      <td>${cxTag(r.complexity)||'<span style="color:var(--muted)">—</span>'}</td>
+      <td style="color:var(--muted);font-size:12px">${r.startDate}<br>${r.startTime}</td>
+      <td style="color:var(--muted);font-size:12px">${r.endDate}<br>${r.endTime}</td>
+      <td><span class="dur">${r.duration}</span></td>
+      <td>${syncIcon(r)}</td>
+      <td>${att?`<span class="attach-count">📎${att}</span>`:''}</td>
+      <td><button class="expand-btn" id="expand_${r._id}">▼</button></td>
+    </tr>
+    <tr class="detail-row" id="detail_${r._id}" style="display:none">
+      <td colspan="10" style="padding:0">
+        <div class="detail-panel">
+          <div class="detail-grid">
+            <div class="detail-field"><label>⚡ Task Efforts</label><p>${r.efforts||'—'}</p></div>
+            <div class="detail-field"><label>🐛 Issues / Notes</label><p>${r.issues||'—'}</p></div>
+          </div>
+          ${att?`<div class="detail-field" style="margin-bottom:12px"><label>📎 Attachments</label><div class="detail-thumbs">${r.attachments.map(a=>`<img class="detail-thumb" src="${a.data}" title="${a.name}" onclick="openLightbox('${a.data}');event.stopPropagation()"/>`).join('')}</div></div>`:''}
+          <div class="detail-actions">
+            <div style="display:flex;align-items:center;gap:8px">
+              ${sc}
+              ${r.synced!==true?`<button class="btn-resync-row" onclick="resyncRecord('${r._id}');event.stopPropagation()">⟳ Re-sync</button>`:''}
+            </div>
+            <button class="btn-edit-row" onclick="openEntryModal('${r._id}');event.stopPropagation()">✏️ Edit Record</button>
+          </div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  ct.innerHTML=`
+    <table>
+      <thead><tr>
+        <th>User</th><th>Project</th><th>Request</th><th>Complexity</th>
+        <th>Start</th><th>End</th><th>Duration</th><th>Sync</th><th>📎</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+function toggleDetail(id){
+  const row=document.getElementById(`detail_${id}`), btn=document.getElementById(`expand_${id}`);
+  if(!row) return; const open=row.style.display==='none';
+  row.style.display=open?'table-row':'none'; if(btn) btn.classList.toggle('open',open);
+}
+
+function clearData(){
+  if(!data.length) return;
+  if(confirm("Clear all local records? Google Sheet data remains safe.")) {
+    data=[]; syncQueue=[]; clearTimeout(retryTimer); saveLocal();
+    renderTable(); renderSyncStats(); setSyncBar("synced","All records synced ✓");
+    showToast("🗑️ Cleared","success");
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// EXCEL EXPORT — per-user + All Users + totals
+// ════════════════════════════════════════════════════════
+function fmtExcelRow(r){ return {'User':r.user,'Project ID':r.project,'Request Type':r.request,'Complexity':r.complexity||'','Task Efforts':r.efforts||'','Issues/Notes':r.issues||'','Start Date':r.startDate,'Start Time':r.startTime,'End Date':r.endDate,'End Time':r.endTime,'Duration':r.duration,'Duration (sec)':r.durationSec,'Entry Type':r.isManual?'Manual':'Timer','Synced':r.synced===true?'Yes':'No','Attachments':(r.attachments||[]).map(a=>a.name).join(', ')||''}; }
+
+function makeTotalRow(label,count,sec){ return {'User':label,'Project ID':`${count} session${count!==1?'s':''}` ,'Request Type':'','Complexity':'','Task Efforts':'','Issues/Notes':'','Start Date':'','Start Time':'','End Date':'','End Time':'','Duration':fmtDur(sec),'Duration (sec)':sec,'Entry Type':'TOTAL','Synced':'','Attachments':''}; }
+
+const COL_W=[16,12,22,10,18,22,12,10,12,10,14,14,10,7,20].map(w=>({wch:w}));
+
+function downloadExcel(){
+  if(!data.length){ showToast("⚠️ No data to export","error"); return; }
+  const wb=XLSX.utils.book_new(), groups={};
+  data.forEach(r=>{ const k=r.user.toLowerCase(); if(!groups[k]) groups[k]={name:r.user,rows:[]}; groups[k].rows.push(r); });
+  Object.values(groups).forEach(({name,rows})=>{
+    const totalSec=rows.reduce((s,r)=>s+(r.durationSec||0),0);
+    const ws=XLSX.utils.json_to_sheet([...rows.map(fmtExcelRow), makeTotalRow(`★ ${name.toUpperCase()} TOTAL`,rows.length,totalSec)]);
+    ws['!cols']=COL_W;
+    XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31).replace(/[\[\]\*\/\\\?:]/g,'_'));
+  });
+  // All Users combined
+  const allRows=[]; const gArr=Object.values(groups);
+  gArr.forEach(({name,rows},i)=>{
+    allRows.push({'User':`━━━ ${name.toUpperCase()} ━━━`,'Project ID':'','Request Type':'','Complexity':'','Task Efforts':'','Issues/Notes':'','Start Date':'','Start Time':'','End Date':'','End Time':'','Duration':'','Duration (sec)':'','Entry Type':'','Synced':'','Attachments':''});
+    rows.forEach(r=>allRows.push(fmtExcelRow(r)));
+    allRows.push(makeTotalRow(`↳ ${name} Subtotal`,rows.length,rows.reduce((s,r)=>s+(r.durationSec||0),0)));
+    if(i<gArr.length-1) allRows.push({});
+  });
+  allRows.push(makeTotalRow(`★ GRAND TOTAL — ALL USERS`,data.length,data.reduce((s,r)=>s+(r.durationSec||0),0)));
+  const wsAll=XLSX.utils.json_to_sheet(allRows); wsAll['!cols']=COL_W;
+  XLSX.utils.book_append_sheet(wb,wsAll,'All Users');
+  XLSX.writeFile(wb,`Task_Report_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast("✓ Excel downloaded!","success");
+}
+
+// ════════════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════════════
+let toastTmr;
+function showToast(msg,type="success"){
+  clearTimeout(toastTmr);
+  const el=document.getElementById("toast");
+  document.getElementById("toastMsg").textContent=msg;
+  el.className=`toast ${type} show`;
+  toastTmr=setTimeout(()=>el.classList.remove("show"),3500);
+}
+
+// ════════════════════════════════════════════════════════
+// INIT DATA (called after login)
+// ════════════════════════════════════════════════════════
+function initData(){
+  // Load and migrate
+  const raw      = JSON.parse(localStorage.getItem("ttd_data")  || "[]");
+  const rawQueue = JSON.parse(localStorage.getItem("ttd_queue") || "[]");
+  data = raw.map(r=>({
+    ...r,
+    _id:r._id||uid(), complexity:r.complexity||'', efforts:r.efforts||'',
+    issues:r.issues||'', attachments:r.attachments||[],
+    synced:r.synced===true?true:(r.synced===false?false:null), syncedAt:r.syncedAt||null
+  }));
+  syncQueue=rawQueue;
+  saveLocal();
+
+  // Load reminder settings
+  reminderMinutes = parseInt(localStorage.getItem("ttd_rem_mins")||DEFAULT_REM_MINS, 10);
+  uiReminderMins  = reminderMinutes;
+  // Restore reminder ON/OFF state
+  reminderOn = localStorage.getItem("ttd_rem_on") === "true";
+  updateReminderUI();
+
+  renderTable(); renderSyncStats();
+  setSyncBar("synced","All records synced ✓");
+  if(syncQueue.length>0){ setSyncBar("pending",`${syncQueue.length} pending from last session`); setTimeout(processQueue,2000); }
+  setInterval(()=>{ if(syncQueue.length>0&&!isSyncing) processQueue(); }, 300000);
+}
+
+// Save reminder on/off to localStorage when changed
+const _origEnable  = enableReminder;
+const _origDisable = disableReminder;
+
+// ════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════
+(function boot(){
+  const name=localStorage.getItem("ttd_user");
+  if(name){ showApp(name); }
+  else{ document.getElementById("loginScreen").style.display="flex";  }
+})();
+</script>
+</body>
+</html>
